@@ -1,9 +1,9 @@
-# CUTLASS Notes
+# 弯刀笔记
 
-The CUTLASS notes series will begin with a minimal GEMM implementation, gradually expand to incorporate CuTe and various CUTLASS components, as well as features of new architectures, e.g. Hopper and Blackwell, ultimately achieving a high-performance fused GEMM operator.
+CUTLASS 笔记系列将从最小的 GEMM 实现开始，逐步扩展到包含 CuTe 和各种 CUTLASS 组件，以及 Hopper 和 Blackwell 等新架构的特性，最终实现高性能的融合 GEMM 算子。
 
 
-## Usage
+## 用法
 
 ```bash
 git clone https://github.com/ArthurinRUC/cutlass-notes.git
@@ -11,20 +11,20 @@ git clone https://github.com/ArthurinRUC/cutlass-notes.git
 make update  # clone cutlass
 ```
 
-## Run sample code
+## 运行示例代码
 
-All example code in this GitHub repository can be compiled and run by simply executing the Python script. For example:
+此 GitHub 仓库中的所有示例代码都可以通过简单地执行 Python 脚本来编译和运行。例如：
 
 ```bash
 cd 01-minimal-gemm
 python minimal_gemm.py
 ```
 
-## CuTe DSL versions
+## CuTe DSL 版本
 
-Each example also ships a CuTe DSL Python port (`cutedsl_*.py`) alongside the original `.cu` / `.py` pair. The DSL port skips the C++ build step entirely — there is nothing to compile, just an `import` of the official CuTe DSL Python package.
+每个示例还附带一个 CuTe DSL Python 移植版（`cutedsl_*.py`与原版 `.cu` / `.py` DSL 端口完全跳过了 C++ 构建步骤——无需编译任何东西，只需…… `import` 官方 CuTe DSL Python 包。
 
-The ports also enable [TVM-FFI](https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/cute_dsl_general/compile_with_tvm_ffi.html), so each pre-compiled callable accepts raw `torch.Tensor` arguments directly and runs on `torch.cuda.current_stream()` without per-call dlpack conversion or explicit stream plumbing. The extra runtime requirements are:
+这些端口还支持 [TVM-FFI](https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/cute_dsl_general/compile_with_tvm_ffi.html)因此，每个预编译的可调用对象都接受原始数据。 `torch.Tensor` 直接传递参数并运行 `torch.cuda.current_stream()` 无需每次调用​​都进行 dlpack 转换或显式流处理。额外的运行时要求如下：
 
 ```bash
 pip install \
@@ -35,30 +35,30 @@ pip install \
   "torch_c_dlpack_ext>=0.1.5"
 ```
 
-`cuda-bindings` provides `cuda.bindings.driver.CUstream` (used in the `@cute.jit` signature). `apache-tvm-ffi` + `torch_c_dlpack_ext` back the `--enable-tvm-ffi` codegen path and the `from_dlpack(..., enable_tvm_ffi=True)` runtime tensor binding.
+`cuda-bindings` 提供 `cuda.bindings.driver.CUstream` （用于 `@cute.jit` 签名）。 `apache-tvm-ffi` + `torch_c_dlpack_ext` 返回 `--enable-tvm-ffi` 代码生成路径和 `from_dlpack(..., enable_tvm_ffi=True)` 运行时张量绑定。
 
-Then run the DSL example the same way you'd run the original Python launcher:
+然后以与运行原始 Python 启动器相同的方式运行 DSL 示例：
 
 ```bash
 cd 01-minimal-gemm
 python cutedsl_minimal_gemm.py
 ```
 
-The DSL ports use `@cute.jit` / `@cute.kernel` to express the kernel and `cute.compile(..., options="--enable-tvm-ffi")` to pre-compile each `is_gemm` / dtype specialization once per run. Compile templates use `make_cute_tensor(...)` (a `from_dlpack(..., enable_tvm_ffi=True)` wrapper) plus `make_fake_stream(use_tvm_ffi_env_stream=True)`; at runtime the compiled callable is invoked with bare `torch.Tensor` args — the DSL syncs to `torch.cuda.current_stream()` automatically (the environment-stream pattern). The host-side test harness mirrors the original — same seed, same `Success / Failed` summary — so a passing CUDA build and a passing DSL build print structurally identical output.
+DSL端口使用 `@cute.jit` / `@cute.kernel` 表达内核和 `cute.compile(..., options="--enable-tvm-ffi")` 预编译每个 `is_gemm` / 每次运行进行一次数据类型特化。编译模板使用 `make_cute_tensor(...)` （一个 `from_dlpack(..., enable_tvm_ffi=True)` 包装纸）加 `make_fake_stream(use_tvm_ffi_env_stream=True)`运行时，编译后的可调用对象会被直接调用。 `torch.Tensor` 参数 — DSL 同步到 `torch.cuda.current_stream()` 自动（环境流模式）。主机端测试框架镜像原始环境——相同的种子，相同的 `Success / Failed` 总结——通过 CUDA 构建和通过 DSL 构建会打印出结构相同的输出。
 
-## Note list
+## 笔记列表
 
-| Notes                     | Summary                                                                                              | Links                                                                 |
+| 注释 | 摘要 | 链接 |
 |---------------------------|------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| **00-Intro**              | Brief introduction to CUTLASS | [intro](https://zhuanlan.zhihu.com/p/1937220431728845963) |
-| **01-minimal-gemm**       | - Introduces CuTe fundamentals<br>- Implements 16x8x8 GEMM kernel using single MMA instruction from scratch<br>- Python kernel invocation, precision validation & performance benchmarking<br>- Profiling with Nsight Compute (ncu) | [minimal-gemm](https://zhuanlan.zhihu.com/p/1937517614084650073) |
-| **02-mixed-precision-gemm** | - Implements mixed-precision GEMM supporting varying input/output/accumulation precisions<br>- Explores technical details for numerical precision conversion within kernels<br>- Demonstrates custom FP8 GEMM kernel implementation via PTX instructions (for CUTLASS-unsupported MMA ops) | [mixed-precision-gemm](https://zhuanlan.zhihu.com/p/1940158874255602181) |
-| **03-tiled-mma** | - Introduces the key conceptual model of GEMM operator: Three-Level Tiling<br>- Details the implementation of Tiled MMA operations in CUTLASS CuTe<br>- Explains the usage and semantics of various parameters in the Tiled MMA API<br>- Extends the GEMM kernel from single instruction to single tile operation | [tiled-mma](https://zhuanlan.zhihu.com/p/1950555644814946318) |
-| **04-tiled-copy** | - Explains the core principles of CuTe TiledCopy and its role in data movement between global and shared memory<br>- Describes the API parameters and semantics of TiledCopy<br>- Demonstrates how to implement data copying at the Tile level<br>- Introduces foundational knowledge of GPU global memory access characteristics | [tiled-copy](https://zhuanlan.zhihu.com/p/1968745447741972494) |
-| **05-block-mma** | - Extends Tiled MMA to the Block level for larger-scale GEMM computations<br>- Explains how multiple Tiled MMA operations are combined within a thread block<br>- Describes the tiling and coordination of TiledCopy and TiledMMA at the Block level<br>- Illustrates the hierarchical dataflow from global memory to shared memory to registers for Block-level MMA | [block-mma](https://zhuanlan.zhihu.com/p/1970162570636816559) |
-| **06-block-copy** | - Stages A / B / (C) through shared memory before the tensor-core MMA<br>- Introduces the gmem→smem→rmem dataflow, with explicit G2S / S2R / R2S / S2G TiledCopies<br>- Uses 128-bit `cp.async` for the gmem→smem path and `AutoVectorizingCopy` (`CopyUniversalOp` in CuTe DSL) for the rest<br>- Walks through dynamic shared-memory sizing and the lifecycle of A/B/C/O buffers within a single block | [block-copy](https://zhuanlan.zhihu.com/p/2004627053077627913) |
+| **00-简介** | CUTLASS 简介 | [intro](https://zhuanlan.zhihu.com/p/1937220431728845963) |
+| **01-minimal-gemm** | - 介绍 CuTe 的基础知识<br>- 从零开始，使用单条 MMA 指令实现了 16x8x8 GEMM 内核。<br>Python内核调用、精度验证和性能基准测试<br>- 使用 Nsight Compute (ncu) 进行性能分析 | [minimal-gemm](https://zhuanlan.zhihu.com/p/1937517614084650073) |
+| **02-mixed-precision-gemm** | - 实现混合精度 GEMM，支持不同的输入/输出/累加精度<br>- 探讨内核中数值精度转换的技术细节。<br>- 通过 PTX 指令演示自定义 FP8 GEMM 内核实现（用于 CUTLASS 不支持的 MMA 操作）| [mixed-precision-gemm](https://zhuanlan.zhihu.com/p/1940158874255602181) |
+| **03-tiled-mma** | - 介绍 GEMM 算子的关键概念模型：三层平铺。<br>- 详细介绍了 CUTLASS CuTe 中 Tiled MMA 操作的实现。<br>- 解释 Tiled MMA API 中各种参数的用法和语义<br>- 将 GEMM 内核从单指令操作扩展到单块操作 | [tiled-mma](https://zhuanlan.zhihu.com/p/1950555644814946318) |
+| **04-tiled-copy** | - 解释 CuTe TiledCopy 的核心原理及其在全局内存和共享内存之间数据移动中的作用<br>- 描述 TiledCopy 的 API 参数和语义<br>- 演示如何在图块级别实现数据复制。<br>- 介绍GPU全局内存访问特性的基础知识 | [tiled-copy](https://zhuanlan.zhihu.com/p/1968745447741972494) |
+| **05-block-mma** | - 将 Tiled MMA 扩展到 Block 级别，以进行更大规模的 GEMM 计算<br>- 解释了如何在线程块中组合多个 Tiled MMA 操作<br>- 描述块级别 TiledCopy 和 TiledMMA 的平铺和协调。<br>- 展示了块级 MMA 从全局内存到共享内存再到寄存器的分层数据流 | [block-mma](https://zhuanlan.zhihu.com/p/1970162570636816559) |
+| **06-块复制** | - 阶段 A / B / (C) 通过张量核心 MMA 之前的共享内存<br>- 引入 gmem→smem→rmem 数据流，并显式支持 G2S / S2R / R2S / S2G TiledCopies<br>- 使用 128 位 `cp.async` 对于 gmem→smem 路径和 `AutoVectorizingCopy` （`CopyUniversalOp` 对于其余部分，请使用 CuTe DSL。<br>- 详细讲解动态共享内存大小调整以及单个内存块内 A/B/C/O 缓冲区的生命周期 | [block-copy](https://zhuanlan.zhihu.com/p/2004627053077627913) |
 
 
-## License
+## 执照
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+本项目采用 MIT 许可证授权 - 有关详细信息，请参阅 LICENSE 文件。
