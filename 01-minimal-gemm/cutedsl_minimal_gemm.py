@@ -190,6 +190,7 @@ def main() -> None:
     b = torch.empty(N, K, device="cuda", dtype=torch.half)
     c = torch.empty(M, N, device="cuda", dtype=torch.half)
 
+
     print("Compiling CuTe DSL minimal_gemm kernels ...")
     gemm_clear = cute.compile(
         minimal_gemm,
@@ -214,20 +215,23 @@ def main() -> None:
         m, n, k = exp
         print(f" M={m}, N={n}, K={k} ".center(PRINT_LENGTH, "-"))
 
-        a = torch.randn(m, k, device="cuda", dtype=torch.half)
-        b = torch.randn(n, k, device="cuda", dtype=torch.half)
-        c = torch.randn(m, n, device="cuda", dtype=torch.half)
+        # a = torch.randn(m, k, device="cuda", dtype=torch.half)
+        # b = torch.randn(n, k, device="cuda", dtype=torch.half)
+        # c = torch.randn(m, n, device="cuda", dtype=torch.half)
+        a = torch.ones(M, K, device="cuda", dtype=torch.half)
+        b = torch.full((N, K), 2.0, device="cuda", dtype=torch.half)
+        c = torch.full((M, N), 3.0, device="cuda", dtype=torch.half)
 
         # ----- Case 1: MM (C = A @ B.T) -----
         c_out = torch.empty(m, n, device="cuda", dtype=torch.half)
-        gemm_clear(a, b, c_out)
+        gemm_clear(a, b, c_out) # c = a @ b;
         torch.cuda.synchronize()
         torch_output = torch.matmul(a, b.T)
         compare_matrix(c_out, torch_output, counters)
 
         # ----- Case 2: MMA (C = A @ B.T + C_in) -----
         c_inout = c.clone()
-        gemm_accum(a, b, c_inout)
+        gemm_accum(a, b, c_inout) # c = a @ b + c;
         torch.cuda.synchronize()
         # Mathematically equivalent to torch.matmul(a, b.T) + c, but the kernel
         # accumulates in fp16 inside the MMA op so torch.addmm is closer to the
@@ -235,6 +239,10 @@ def main() -> None:
         # remain).
         torch_output = torch.addmm(c, a, b.T)
         compare_matrix(c_inout, torch_output, counters)
+
+        # -- Case 3: 手动校验
+        c_cuda = torch.full((M, N), 19.0, device="cuda", dtype=torch.half)
+        compare_matrix(c_inout, c_cuda, counters)
 
     print(f" Summary: {counters['succeed']} Succeed, {counters['failed']} Failed ".center(PRINT_LENGTH, "-"))
 

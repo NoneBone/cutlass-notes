@@ -53,7 +53,7 @@ __global__ void minimal_gemm(void *Cptr, const void *Aptr, const void *Bptr, int
 
   auto copy_atom = AutoVectorizingCopy{};
 
-  copy(copy_atom, tCgA, tCrA);
+  copy(copy_atom, tCgA, tCrA);// 全局内存到寄存器
   copy(copy_atom, tCgB, tCrB);
 
   if constexpr (IsGemm)

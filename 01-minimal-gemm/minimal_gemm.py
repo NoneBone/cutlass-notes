@@ -102,9 +102,12 @@ for exp in exps:
     M, N, K = exp
     print(f" M={M}, N={N}, K={K} ".center(PRINT_LENGTH, "-"))
 
-    a = torch.randn(M, K, device="cuda", dtype=torch.half)
-    b = torch.randn(N, K, device="cuda", dtype=torch.half)
-    c = torch.randn(M, N, device="cuda", dtype=torch.half)
+    # a = torch.randn(M, K, device="cuda", dtype=torch.half)
+    # b = torch.randn(N, K, device="cuda", dtype=torch.half)
+    # c = torch.randn(M, N, device="cuda", dtype=torch.half)
+    a = torch.ones(M, K, device="cuda", dtype=torch.half)
+    b = torch.full((N, K), 2.0, device="cuda", dtype=torch.half)
+    c = torch.full((M, N), 3.0, device="cuda", dtype=torch.half)
 
     # Case 1: MM
     kernel_output = lib.minimal_gemm(a, b, None)
@@ -121,6 +124,10 @@ for exp in exps:
         # slight numerical discrepancies due to floating-point arithmetic.
         torch_output = torch.addmm(c, a, b.T)
         compare_matrix(kernel_output, torch_output)
+
+    # Case 3: 手动验证结果
+    c_cuda = torch.full((M, N), 19.0, device="cuda", dtype=torch.half)
+    compare_matrix(kernel_output, c_cuda)
 
 
 print(f" Summary: {num_succeed} Succeed, {num_failed} Failed ".center(PRINT_LENGTH, "-"))
