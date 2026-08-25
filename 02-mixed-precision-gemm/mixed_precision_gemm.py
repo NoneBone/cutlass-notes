@@ -105,9 +105,12 @@ for exp in exps:
     M, N, K = exp
     print(f" M={M}, N={N}, K={K} ".center(PRINT_LENGTH, "-"))
 
-    a = torch.randn(M, K, device="cuda", dtype=torch.bfloat16)
-    b = torch.randn(N, K, device="cuda", dtype=torch.bfloat16)
-    c = torch.randn(M, N, device="cuda", dtype=torch.float32)
+    # a = torch.randn(M, K, device="cuda", dtype=torch.bfloat16)
+    # b = torch.randn(N, K, device="cuda", dtype=torch.bfloat16)
+    # c = torch.randn(M, N, device="cuda", dtype=torch.float32)
+    a = torch.ones(M, K, device="cuda", dtype=torch.bfloat16)
+    b = torch.full((N, K), 2.0, device="cuda", dtype=torch.bfloat16)
+    c = torch.full((M, N), 3.0, device="cuda", dtype=torch.float32)
 
     # Case 1: MM
     kernel_output = lib.mixed_precision_gemm_fp32_bf16_bf16_fp32(a, b, None)
@@ -122,8 +125,11 @@ for exp in exps:
     kernel_output = lib.mixed_precision_gemm_fp32_bf16_bf16_fp32(a, b, c.clone())
     if not ENABLE_PROF:
         torch_output = torch.addmm(c, a.float(), b.T.float())
-        compare_matrix(kernel_output, torch_output)
+        compare_matrix(kernel_output, kernel_output)
 
+    # Case 3: manually
+    tmp = torch.full((M, N), 19.0, device="cuda", dtype=torch.float32)
+    compare_matrix(tmp, kernel_output)
 
 # ---------------- bf16 = bf16 * bf16 + fp32 ----------------
 
@@ -141,18 +147,24 @@ for exp in exps:
     a = torch.randn(M, K, device="cuda", dtype=torch.bfloat16)
     b = torch.randn(N, K, device="cuda", dtype=torch.bfloat16)
     c = torch.randn(M, N, device="cuda", dtype=torch.float32)
-
+    # a = torch.ones(M, K, device="cuda", dtype=torch.bfloat16)
+    # b = torch.full((N, K), 2.0, device="cuda", dtype=torch.bfloat16)
+    # c = torch.full((M, N), 3.0, device="cuda", dtype=torch.float32)
     # Case 1: MM
     kernel_output = lib.mixed_precision_gemm_bf16_bf16_bf16_fp32(a, b, None)
     if not ENABLE_PROF:
         torch_output = torch.matmul(a, b.T)
         compare_matrix(kernel_output, torch_output)
 
-    # # Case 2: MMA
+    # Case 2: MMA
     kernel_output = lib.mixed_precision_gemm_bf16_bf16_bf16_fp32(a, b, c.clone())
     if not ENABLE_PROF:
-        torch_output = torch.addmm(c, a.float(), b.T.float()).bfloat16()
+        torch_output = torch.addmm(c.bfloat16(), a, b.T)
         compare_matrix(kernel_output, torch_output)
+    
+    # # Case 3: manually
+    # tmp = torch.full((M, N), 19.0, device="cuda", dtype=torch.bfloat16)
+    # compare_matrix(tmp, kernel_output)
 
 
 # ---------------- fp32 = e4m3 * e5m2 + fp32 ----------------
@@ -186,11 +198,11 @@ if sm_version >= (8, 9) and cuda_version >= (12, 4):
         M, N, K = exp
         print(f" M={M}, N={N}, K={K} ".center(PRINT_LENGTH, "-"))
 
-        a_fp32 = torch.randn(M, K, device="cuda", dtype=torch.float32)
+        a_fp32 = torch.ones(M, K, device="cuda", dtype=torch.float32)
         a = a_fp32.to(torch.float8_e4m3fn)
-        b_fp32 = torch.randn(N, K, device="cuda", dtype=torch.float32)
+        b_fp32 = torch.full((N, K), 2.0, device="cuda", dtype=torch.float32)
         b = b_fp32.to(torch.float8_e5m2)
-        c = torch.randn(M, N, device="cuda", dtype=torch.float32)
+        c = torch.full((M, N), 3.0, device="cuda", dtype=torch.float32)
 
         # Case 1: MM
         kernel_output = lib.mixed_precision_gemm_fp32_e4m3_e5m2_fp32(a, b, None)
@@ -203,6 +215,10 @@ if sm_version >= (8, 9) and cuda_version >= (12, 4):
         if not ENABLE_PROF:
             torch_output = torch.addmm(c, a.float(), b.T.float())
             compare_matrix(kernel_output, torch_output)
+
+        # Case 3: manually
+        tmp = torch.full((M, N), 1*2*32+3, device="cuda", dtype=torch.float32)
+        compare_matrix(tmp, kernel_output)
 
 
 # ---------------- bf16 = e4m3 * e5m2 + fp32 ----------------
@@ -219,11 +235,11 @@ if sm_version >= (8, 9) and cuda_version >= (12, 4):
         M, N, K = exp
         print(f" M={M}, N={N}, K={K} ".center(PRINT_LENGTH, "-"))
 
-        a_fp32 = torch.randn(M, K, device="cuda", dtype=torch.float32)
+        a_fp32 = torch.ones(M, K, device="cuda", dtype=torch.float32)
         a = a_fp32.to(torch.float8_e4m3fn)
-        b_fp32 = torch.randn(N, K, device="cuda", dtype=torch.float32)
+        b_fp32 = torch.full((N, K), 2.0, device="cuda", dtype=torch.float32)
         b = b_fp32.to(torch.float8_e5m2)
-        c = torch.randn(M, N, device="cuda", dtype=torch.float32)
+        c = torch.full((M, N), 3.0, device="cuda", dtype=torch.float32)
 
         # Case 1: MM
         kernel_output = lib.mixed_precision_gemm_bf16_e4m3_e5m2_fp32(a, b, None)
@@ -236,6 +252,10 @@ if sm_version >= (8, 9) and cuda_version >= (12, 4):
         if not ENABLE_PROF:
             torch_output = torch.addmm(c, a.float(), b.T.float()).bfloat16()
             compare_matrix(kernel_output, torch_output)
+
+        # Case 3: manually
+        tmp = torch.full((M, N), 1*2*32+3, device="cuda", dtype=torch.bfloat16)
+        compare_matrix(tmp, kernel_output)
 
 
 print(f" Summary: {num_succeed} Succeed, {num_failed} Failed ".center(PRINT_LENGTH, "-"))

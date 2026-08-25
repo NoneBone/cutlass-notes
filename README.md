@@ -58,6 +58,11 @@ DSL端口使用 `@cute.jit` / `@cute.kernel` 表达内核和 `cute.compile(..., 
 | **05-block-mma** | - 将 Tiled MMA 扩展到 Block 级别，以进行更大规模的 GEMM 计算<br>- 解释了如何在线程块中组合多个 Tiled MMA 操作<br>- 描述块级别 TiledCopy 和 TiledMMA 的平铺和协调。<br>- 展示了块级 MMA 从全局内存到共享内存再到寄存器的分层数据流 | [block-mma](https://zhuanlan.zhihu.com/p/1970162570636816559) |
 | **06-块复制** | - 阶段 A / B / (C) 通过张量核心 MMA 之前的共享内存<br>- 引入 gmem→smem→rmem 数据流，并显式支持 G2S / S2R / R2S / S2G TiledCopies<br>- 使用 128 位 `cp.async` 对于 gmem→smem 路径和 `AutoVectorizingCopy` （`CopyUniversalOp` 对于其余部分，请使用 CuTe DSL。<br>- 详细讲解动态共享内存大小调整以及单个内存块内 A/B/C/O 缓冲区的生命周期 | [block-copy](https://zhuanlan.zhihu.com/p/2004627053077627913) |
 
+## 教案编写
+
+```sh
+我是 cutlass 初学者，帮我概述目录 02-mixed-precision-gemm, 介绍值得学习的代码段，并设置简单的作业，你的教案内容帮我写入该目录的 README.MD
+```
 
 ## 执照
 
