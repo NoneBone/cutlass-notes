@@ -61,7 +61,7 @@ DSL端口使用 `@cute.jit` / `@cute.kernel` 表达内核和 `cute.compile(..., 
 ## 教案编写
 
 ```sh
-我是 cutlass 初学者，帮我概述目录 02-mixed-precision-gemm, 介绍值得学习的代码段，并设置简单的作业，你的教案内容帮我写入该目录的 README.MD
+我是 cutlass 初学者，帮我概述目录 04 到 14 ,每次只能操作一个目录，做如下内容: 介绍值得学习的代码段，并设置简单的作业，你的教案内容帮我写入对应目录的 README.MD
 ```
 
 ## 执照
