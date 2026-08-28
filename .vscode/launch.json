@@ -1,0 +1,184 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "inputs": [
+        {
+            "id": "cudaPid",
+            "type": "promptString",
+            "description": "请输入要附加的 Python 进程 PID",
+            "default": ""
+        }
+    ],
+    "configurations": [
+        {// 1. 可执行文件的 cu 调试
+            "name": "03-tc",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/4_tensor_core_wmma/hgemm_v1_wmma_m16n16k16_naive_kernel",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            // "environment": [],
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/usr/local/cuda-12.8/lib64:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "PATH",
+                    "value": "/usr/local/cuda-12.8/bin:${env:PATH}"
+                }
+            ],
+            "externalConsole": false,
+            // "MIMode": "gdb",
+            "miDebuggerPath": "/usr/local/cuda-12.8/bin/cuda-gdb",
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {// 2.直接去 cpp 文件的断点，py的断点用不了; 依赖于动态链接库
+        //  https://stackoverflow.com/questions/55098128/how-to-configure-vs-code-to-be-able-to-step-into-a-shared-library-so-that-is
+            "name": "(gdb) Goto CppPoint",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/cys/.venvs/tools/bin/python",
+            "args": [
+                "${workspaceFolder}/03-tiled-mma/tiled_mma.py"
+                // l8w_sampler.py
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/03-tiled-mma/",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+            ],
+            // "additionalSOLibSearchPath": "${workspaceFolder}/01-TGL/getSamplerCore/build/lib.linux-x86_64-cpython-38" 
+        },
+        {
+            // 推荐：直接用 cuda-gdb 启动 Python，并调试 JIT 编译出的 device kernel。  
+            // tiled_mma.py 会因 CUTLASS_CUDA_DEBUG=1 自动加入 -G/-g/-O0。
+            "name": "03-tiled-mma · CUDA-GDB（device kernel）",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "/home/cys/.venvs/tools/bin/python",
+            "args": [
+                "-u",
+                "${workspaceFolder}/03-tiled-mma/tiled_mma.py"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/03-tiled-mma",
+            "environment": [
+                {
+                    "name": "CUTLASS_CUDA_DEBUG",
+                    "value": "1"
+                },
+                {
+                    "name": "CUDA_LAUNCH_BLOCKING",
+                    "value": "1"
+                },
+                {
+                    "name": "TORCH_EXTENSIONS_DIR",
+                    "value": "${workspaceFolder}/.torch_extensions/cuda-gdb"
+                },
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/usr/local/cuda/lib64:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "PATH",
+                    "value": "/usr/local/cuda/bin:${env:PATH}"
+                },
+                {
+                    "name": "PYTHONUNBUFFERED",
+                    "value": "1"
+                }
+            ],
+            "externalConsole": false,
+            "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
+            "setupCommands": [
+                {
+                    "description": "启用 GDB pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "遇到 CUDA API 错误时停止",
+                    "text": "set cuda api_failures stop",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "关闭分页，便于查看长输出",
+                    "text": "set pagination off",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "不要在 PyTorch 其他 kernel 上自动暂停",
+                    "text": "set cuda break_on_launch none",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "允许 JIT 动态库加载后再绑定源码断点",
+                    "text": "set breakpoint pending on",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "在 tiled_mma kernel 入口暂停",
+                    "text": "break /home/cys/Project/01-github/cutlass-notes/03-tiled-mma/tiled_mma.cu:8",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "在 Tensor Core gemm 调用处暂停",
+                    "text": "break /home/cys/Project/01-github/cutlass-notes/03-tiled-mma/tiled_mma.cu:58",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            // 备选：先在终端启动带 CUTLASS_CUDA_DEBUG=1 的 Python，再附加 cuda-gdb。 但需要提升权限 echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+            "name": "03-tiled-mma · CUDA-GDB attach",
+            "type": "cuda-gdb",
+            "request": "attach",
+            "processId": "${input:cudaPid}",
+            "cwd": "${workspaceFolder}/03-tiled-mma",
+            "externalConsole": false,
+            "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
+            "setupCommands": [
+                {
+                    "description": "遇到 CUDA API 错误时停止",
+                    "text": "set cuda api_failures stop",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "关闭分页",
+                    "text": "set pagination off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            // 仅调试 Python/host C++；普通 gdb 不能单步 CUDA device kernel。
+            "name": "03-tiled-mma · Python host（非 device）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/03-tiled-mma/tiled_mma.py",
+            "cwd": "${workspaceFolder}/03-tiled-mma",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+    ]
+}

@@ -1,6 +1,6 @@
 # Custom Settings
 .DS_Store
-.vscode
+.vscode/settings.json
 .temp
 log_dir/
 saved_model/

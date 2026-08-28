@@ -9,6 +9,32 @@ CUTLASS 笔记系列将从最小的 GEMM 实现开始，逐步扩展到包含 Cu
 git clone https://github.com/ArthurinRUC/cutlass-notes.git
 
 make update  # clone cutlass
+
+CUTLASS_CUDA_DEBUG=1 \
+CUDA_LAUNCH_BLOCKING=1 \
+TORCH_EXTENSIONS_DIR=/home/cys/Project/01-github/cutlass-notes/.torch_extensions/cuda-gdb \
+/home/cys/.venvs/tools/bin/python -u -c '
+import os
+print(f"Python PID: {os.getpid()}", flush=True)
+input("请先附加 cuda-gdb，完成后按 Enter 继续...")
+exec(compile(open("tiled_mma.py").read(), "tiled_mma.py", "exec"))
+'
+/usr/local/cuda/bin/cuda-gdb -p 1880916
+
+
+cd /home/cys/Project/01-github/cutlass-notes/03-tiled-mma
+
+CUTLASS_CUDA_DEBUG=1 \
+CUDA_LAUNCH_BLOCKING=1 \
+TORCH_EXTENSIONS_DIR=/home/cys/Project/01-github/cutlass-notes/.torch_extensions/cuda-gdb \
+/usr/local/cuda/bin/cuda-gdb \
+--args /home/cys/.venvs/tools/bin/python -u /home/cys/Project/01-github/cutlass-notes/03-tiled-mma/tiled_mma.py
+
+set breakpoint pending on
+set cuda break_on_launch none
+break tiled_mma.cu:8
+break tiled_mma.cu:58
+run
 ```
 
 ## 运行示例代码

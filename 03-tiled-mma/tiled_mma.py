@@ -10,6 +10,12 @@ sources = [os.path.join(current_dir, filename) for filename in ["tiled_mma.cu"]]
 
 os.environ["TORCH_CUDA_ARCH_LIST"] = ".".join(map(str, torch.cuda.get_device_capability()))
 
+# Set CUTLASS_CUDA_DEBUG=1 from the debugger launch configuration to emit
+# device debug information. ``--generate-line-info`` is useful for profiling,
+# but ``-G`` is needed by cuda-gdb for reliable device breakpoints/stepping.
+CUDA_DEBUG = os.environ.get("CUTLASS_CUDA_DEBUG", "0").lower() in {"1", "true", "yes"}
+debug_cuda_cflags = ["-G", "-g", "-O0"] if CUDA_DEBUG else []
+
 # Load CUDA extension module
 lib = load(
     name="tiled_mma",
@@ -40,7 +46,7 @@ lib = load(
         # "-g", # host debug
         # "-Xcompiler",
         # "-rdynamic",
-    ],
+    ] + debug_cuda_cflags,
     extra_cflags=["-std=c++17"],
     verbose=True,  # show compile logs
 )
